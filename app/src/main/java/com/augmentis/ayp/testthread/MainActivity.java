@@ -1,10 +1,9 @@
 package com.augmentis.ayp.testthread;
 
-import android.content.Intent;
-import android.os.AsyncTask;
-import android.renderscript.Sampler;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.support.v7.app.AppCompatActivity;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -14,9 +13,12 @@ import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int MESSAGE_CODE = 1;
+    private static final int MESSAGE_CODE_1 = 2;
     TextView textViewNumber;
     EditText editTextNumber;
     Button buttonNumber;
+    Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,48 +46,56 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        ////////////////////////////////// Handler //////////////////////////////////////
+
+        handler = new Handler(){
+            @Override
+            public void handleMessage(Message msg) {
+                if (msg.what == MESSAGE_CODE){
+                    textViewNumber.setText(msg.obj.toString());
+                }
+                else {
+                    textViewNumber.setText("Finish");
+                }
+            }
+        };
+
         buttonNumber.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String s = editTextNumber.getText().toString();
+                        int inputNumber = Integer.valueOf(s);
+                        while(true){
+                            try {
+                                Thread.sleep(1000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            Message msg = handler.obtainMessage(MESSAGE_CODE, inputNumber);
+                            msg.sendToTarget();
+                            inputNumber--;
 
-                TestAsyncTask testAsyncTask = new TestAsyncTask();
-                testAsyncTask.execute(editTextNumber.getText().toString());
+                            if(inputNumber < 0) {
+                                try {
+                                    Thread.sleep(1000);
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                Message msg1 = handler.obtainMessage(MESSAGE_CODE_1, inputNumber);
+                                msg1.sendToTarget();
+                                break;
+                            }
+                        }
+
+                    }
+                }).start();
 
             }
         });
     }
 
-    private class TestAsyncTask extends AsyncTask<String, Integer, String> {
-
-        @Override
-        protected void onProgressUpdate(Integer... values) {
-            textViewNumber.setText(values[0].toString());
-        }
-
-        @Override
-        protected String doInBackground(String... strings) {
-            String s = strings[0];
-            int inputNumber = Integer.valueOf(s);
-            while (true) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                publishProgress(inputNumber);
-                inputNumber--;
-                if(inputNumber<0){
-                    break;
-                }
-            }
-
-            return "Finish";
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            textViewNumber.setText(s);
-        }
-    }
 
 }
