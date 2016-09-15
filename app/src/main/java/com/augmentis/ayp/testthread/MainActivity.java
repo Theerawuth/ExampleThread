@@ -11,14 +11,15 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements BackgroundThread.CallBacks {
 
     private static final int MESSAGE_CODE = 1;
     private static final int MESSAGE_CODE_1 = 2;
     TextView textViewNumber;
     EditText editTextNumber;
     Button buttonNumber;
-    Handler handler;
+    private Handler handlerMainThread;
+    BackgroundThread bgThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,56 +47,26 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        ////////////////////////////////// Handler //////////////////////////////////////
+        handlerMainThread = new Handler();
+        bgThread = new BackgroundThread("ThreadName", this, handlerMainThread);
+        bgThread.start();
+        bgThread.onLooperPrepared();
 
-        handler = new Handler(){
-            @Override
-            public void handleMessage(Message msg) {
-                if (msg.what == MESSAGE_CODE){
-                    textViewNumber.setText(msg.obj.toString());
-                }
-                else {
-                    textViewNumber.setText("Finish");
-                }
-            }
-        };
+        ////////////////////////////////// Looper:HandlerThread ////////////////////////////////////
 
         buttonNumber.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        String s = editTextNumber.getText().toString();
-                        int inputNumber = Integer.valueOf(s);
-                        while(true){
-                            try {
-                                Thread.sleep(1000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            Message msg = handler.obtainMessage(MESSAGE_CODE, inputNumber);
-                            msg.sendToTarget();
-                            inputNumber--;
-
-                            if(inputNumber < 0) {
-                                try {
-                                    Thread.sleep(1000);
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                                Message msg1 = handler.obtainMessage(MESSAGE_CODE_1, inputNumber);
-                                msg1.sendToTarget();
-                                break;
-                            }
-                        }
-
-                    }
-                }).start();
-
+                bgThread.sendValueInQueue(editTextNumber.getText().toString());
             }
         });
+
+
     }
 
-
+    // get Value Callbacks
+    @Override
+    public void setText(String s) {
+        textViewNumber.setText(s);
+    }
 }
